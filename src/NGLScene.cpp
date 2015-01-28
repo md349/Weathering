@@ -269,22 +269,22 @@ void NGLScene::initialize()
 
       m_bboxvec = bb.getBBox();
 
-      bb.goToSurface(m_tris);
+      //bb.goToSurface(m_tris);
       std::cout<<"bbox surfels emitted\n";
 
       //start propagating
-      ver.propagate(m_tris);
+     // ver.propagate(m_tris);
       std::cout<<"vertical gtons emitted\n";
       m_vert = ver.getVertical();
 
       //hemisphere gtons propagate towards centre
-      hem.propagate(m_tris);
+      hem.propagate(m_tris, objCentre);
       std::cout<<"hemispherical gtons emitted\n";
       m_hem = hem.getHem();
 
       //transfer carrier properties
-      //ver.transfer(m_bboxvec);
-      //hem.transfer(m_bboxvec);
+      ver.transfer(m_bboxvec);
+      hem.transfer(m_bboxvec);
 
       //Our GammaTon Map is our surfel vector in BBox;
     }
@@ -452,22 +452,6 @@ void NGLScene::render()
     trans.translate(vPos[0],vPos[1],vPos[2]);
     shader->setShaderParamFromMat4("MVP",trans*m_view*m_projection);
     ngl::VAOPrimitives::instance()->draw("sphere1");
-
-		ngl::Vec3 rayStart = objCentre;
-		ngl::Vec3 rayEnd = m_hem[i].getPos();
-
-		ngl::VertexArrayObject *vao= ngl::VertexArrayObject::createVOA(GL_LINES);
-		vao->bind();
-		ngl::Vec3 points[2];
-		points[0]= rayStart;
-		points[1]= rayEnd;
-		vao->setData(2*sizeof(ngl::Vec3),points[0].m_x);
-		vao->setVertexAttributePointer(0,3,GL_FLOAT,sizeof(ngl::Vec3),0);
-		vao->setNumIndices(2);
-		shader->setShaderParamFromMat4("MVP",trans*m_view*m_projection);
-		vao->draw();
-		vao->removeVOA();
-		delete vao;
 	}
 }
 
