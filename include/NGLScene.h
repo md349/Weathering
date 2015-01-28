@@ -11,7 +11,8 @@
 #include <ngl/Text.h>
 #include <ngl/Mat4.h>
 #include <ngl/Vec3.h>
-#include <ngl/BBox.h>
+#include <ngl/Obj.h>
+
 
 #include <GTon.h>
 #include <Surfel.h>
@@ -55,6 +56,28 @@ class NGLScene : public OpenGLWindow
 
 private:
 
+    int m_spinXFace;
+    int m_spinYFace;
+
+
+    bool m_rotate;
+    bool m_translate;
+
+    int m_origX;
+    int m_origY;
+
+    int m_origXPos;
+    int m_origYPos;
+
+
+    ngl::Mat4 m_mouseGlobalTX;
+
+    ngl::Camera *m_cam;
+
+    ngl::Transformation m_transform;
+
+    ngl::Vec3 m_modelPos;
+
     //----------------------------------------------------------------------------------------------------------------------
     /// @brief Qt Event called when the window is re-sized
     /// @param [in] _event the Qt event to query for size etc
@@ -66,36 +89,29 @@ private:
     //----------------------------------------------------------------------------------------------------------------------
     void keyPressEvent(QKeyEvent *_event);
 
+    void loadMatricesToShader();
+
+    void loadGTonShader(ngl::Mat4 trans);
+
     ngl::Mat4 m_projection;
     ngl::Mat4 m_view;
 
-    std::vector <pwl::Surfel> m_bboxvec;
+    std::vector <pwl::Surfel *> m_bboxvec;
     std::vector <pwl::GTon> m_vert;
     std::vector <pwl::GTon> m_hem;
 
-    struct vertData
-    {
-      GLfloat u;  //tex coord
-      GLfloat v;  //tex coord
-      GLfloat nx; //normal
-      GLfloat ny;
-      GLfloat nz;
-      GLfloat x;  //position
-      GLfloat y;
-      GLfloat z;
-    };
-
-    //vector of data for our mesh
-    std::vector <vertData> m_vboMesh;
+    ngl::Vec3 objCentre;
 
     //vertex array object
     ngl::VertexArrayObject *m_vaoMesh;
 
-    //bounding box to work out emitter sizes.
-    ngl::BBox m_bbox;
-
     std::vector <pwl::Triangle> m_tris;
 
+    //holds surfels for gammaton map
+    std::vector <pwl::Surfel> m_fGTMap;
+
+    //holds normalised positions of surfels for texture
+    std::vector<ngl::Vec3> m_textureVec;
 };
 
 #endif
