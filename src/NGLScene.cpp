@@ -35,7 +35,7 @@ NGLScene::NGLScene(QWindow *_parent) : OpenGLWindow(_parent)
   m_spinXFace = 0;
   m_spinYFace = 0;
   m_projection = ngl::perspective(25,(float)720.0/576.0,0.001,350);
-  m_view = ngl::lookAt(ngl::Vec3(16,5,15), ngl::Vec3(0,0,0), ngl::Vec3(0,1,0));
+  m_view = ngl::lookAt(ngl::Vec3(15,5,20), ngl::Vec3(0,0,0), ngl::Vec3(0,1,0));
 }
 
 NGLScene::~NGLScene()
@@ -99,8 +99,8 @@ void NGLScene::initialize()
   //load obj
   std::cout<<"loading model\n";
 
-  //load obj
-  ngl::Obj mesh("models/cube.obj");
+  //load obj. Add path to .obj file
+  ngl::Obj mesh("models/Sphere.obj");
 
   std::cout<<"checking triangular...\n";
   //ngl only works with tri meshes
@@ -166,6 +166,7 @@ void NGLScene::initialize()
         d.nz = 0;
         d.u = 0;
         d.v = 0;
+        std::cout<<"System will fail without tex coordinates\n";
       }
       //if we have norm but no tex
       else if(nNorm > 0 && nTex == 0)
@@ -175,6 +176,7 @@ void NGLScene::initialize()
         d.nz = m_normals[m_faces[i].m_norm[j]].m_z;
         d.u = 0;
         d.v = 0;
+        std::cout<<"System will fail without tex coordinates\n";
       }
 
     vboMesh.push_back(d);
@@ -206,6 +208,14 @@ void NGLScene::initialize()
 
     m_tris.push_back(pwl::Triangle(v1,v2,v3));
   }
+
+  for(unsigned int i = 0; i < vboMesh.size(); ++i)
+  {
+    ngl::Vec2 vt (vboMesh[i].u, vboMesh[i].v);
+    m_uv.push_back(vt);
+  }
+
+
 
   //grab instance of VAO class. As Tri Strip
   m_vaoMesh = ngl::VertexArrayObject::createVOA(GL_TRIANGLES);
@@ -264,16 +274,14 @@ void NGLScene::initialize()
 
       //set up bounding box emitter
       //number of surfels is per bounding box face
-      bb.create(bbox, 10000, objCentre);
+      bb.create(bbox, 1500, objCentre);
       std::cout<<"bounding box emitter created\n";
 
-      m_bboxvec = bb.getBBox();
-
-      //bb.goToSurface(m_tris);
+      bb.goToSurface(m_tris);
       std::cout<<"bbox surfels emitted\n";
 
       //start propagating
-     // ver.propagate(m_tris);
+      ver.propagate(m_tris);
       std::cout<<"vertical gtons emitted\n";
       m_vert = ver.getVertical();
 
@@ -285,6 +293,8 @@ void NGLScene::initialize()
       //transfer carrier properties
       ver.transfer(m_bboxvec);
       hem.transfer(m_bboxvec);
+
+      m_bboxvec = bb.getBBox();
 
       //Our GammaTon Map is our surfel vector in BBox;
     }
@@ -304,21 +314,16 @@ void NGLScene::initialize()
         }
     }
 
+    //for()
+
     //increase counter
     iterationCounter += 1;
   }
 
-  //normalise all of the positions in
-  for(unsigned int i = 0; i < m_fGTMap.size(); ++i)
-  {
-    ngl::Vec3 tempPos = m_fGTMap[i].getPos();
-    tempPos.normalize();
-    m_textureVec.push_back(tempPos);
-  }
-
   //create textures
-  pwl::Texture tex;
-  tex.generateTexture(m_textureVec);
+  //change the filepath for location of texture save
+  pwl::Texture tex(256,256, "/home/i7660362/PWL/texture/PWLTexture.png");
+  tex.generateTexture(m_bboxvec, m_uv);
 
   std::cout<<"Weathering has finished.\n";
 
@@ -389,12 +394,10 @@ void NGLScene::loadGTonShader(ngl::Mat4 _trans)
 
   shader->setShaderParamFromMat4("MVP",MVP);
   shader->setShaderParamFromMat4("MV",MV);
-
 }
 
 void NGLScene::render()
 {
-
   // clear the screen and depth buffer
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -408,8 +411,6 @@ void NGLScene::render()
   m_vaoMesh->bind();
   m_vaoMesh->draw();
 
-  /**
-
   for(unsigned int i = 0; i < m_bboxvec.size(); ++i)
   {
     ngl::Vec3 bbPos = m_bboxvec[i]->getPos();
@@ -417,26 +418,7 @@ void NGLScene::render()
     trans.translate(bbPos[0],bbPos[1],bbPos[2]);
     shader->setShaderParamFromMat4("MVP",trans*m_view*m_projection);
     ngl::VAOPrimitives::instance()->draw("sphere1");
-
-
-
-		ngl::Vec3 rayStart = objCentre;
-		ngl::Vec3 rayEnd = m_bboxvec[i]->getPos();
-
-		ngl::VertexArrayObject *vao= ngl::VertexArrayObject::createVOA(GL_LINES);
-		vao->bind();
-		ngl::Vec3 points[2];
-		points[0]= rayStart;
-		points[1]= rayEnd;
-		vao->setData(2*sizeof(ngl::Vec3),points[0].m_x);
-		vao->setVertexAttributePointer(0,3,GL_FLOAT,sizeof(ngl::Vec3),0);
-		vao->setNumIndices(2);
-		shader->setShaderParamFromMat4("MVP",trans*m_view*m_projection);
-		vao->draw();
-		vao->removeVOA();
-		delete vao;
-	}
-
+  }
 
   for(unsigned int i = 0; i < m_vert.size(); ++i)
   {
@@ -444,7 +426,7 @@ void NGLScene::render()
     trans.translate(vPos[0],vPos[1],vPos[2]);
     shader->setShaderParamFromMat4("MVP",trans*m_view*m_projection);
     ngl::VAOPrimitives::instance()->draw("sphere1");
-  }**/
+  }
 
   for(unsigned int i = 0; i < m_hem.size(); ++i)
   {

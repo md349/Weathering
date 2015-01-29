@@ -105,7 +105,11 @@ private:
     //vertex array object
     ngl::VertexArrayObject *m_vaoMesh;
 
+    //vector for triangles
     std::vector <pwl::Triangle> m_tris;
+
+    //vector for text coords
+    std::vector <ngl::Vec2> m_uv;
 
     //holds surfels for gammaton map
     std::vector <pwl::Surfel> m_fGTMap;

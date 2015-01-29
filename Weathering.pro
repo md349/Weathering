@@ -77,6 +77,8 @@ macx:DEFINES += DARWIN
 # this is where to look for includes
 INCLUDEPATH += $$(HOME)/NGL/include/
 INCLUDEPATH += $$(HOME)/PWL/include/
+#include path for lodepng
+INCLUDEPATH += $$(HOME)/PWL/lodepng/include/
 
 win32: {
         PRE_TARGETDEPS+=C:/NGL/lib/NGL.lib
