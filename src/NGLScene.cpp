@@ -42,6 +42,9 @@ NGLScene::~NGLScene()
 {
   ngl::NGLInit *Init = ngl::NGLInit::instance();
   std::cout<<"Shutting down NGL, removing VAO's and Shaders\n";
+  delete m_key;
+  delete m_fill;
+  delete m_back;
   Init->NGLQuit();
 }
 
@@ -70,13 +73,52 @@ struct vertData
   GLfloat z;
 };
 
+void NGLScene::loadTexture()
+{
+  QImage *image = new QImage();
+    //we need to change the location of the texture to point to PWL
+    bool loaded=image->load("/Users/md/PWL/texture/PWLTexture.png");
+    if(loaded == true)
+    {
+      int width=image->width();
+      int height=image->height();
+
+      unsigned char *data = new unsigned char[ width*height*3];
+      unsigned int index=0;
+      QRgb colour;
+      for( int y=0; y<height; ++y)
+      {
+        for( int x=0; x<width; ++x)
+        {
+          colour=image->pixel(x,y);
+
+          data[index++]=qRed(colour);
+          data[index++]=qGreen(colour);
+          data[index++]=qBlue(colour);
+        }
+      }
+
+
+    glGenTextures(1,&m_textureName);
+    glBindTexture(GL_TEXTURE_2D,m_textureName);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,width,height,0,GL_RGB,GL_UNSIGNED_BYTE,data);
+
+    glGenerateMipmap(GL_TEXTURE_2D); //  Allocate the mipmaps
+
+    }
+}
+
+//derived from Jon Maceys Normal Mapping NGL Demo and modified for this system
 void NGLScene::initialize()
 {
   // we need to initialise the NGL lib which will load all of the OpenGL functions, this must
   // be done once we have a valid GL context but before we call any GL commands. If we dont do
   // this everything will crash
   ngl::NGLInit::instance();
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);			   // Grey Background
+  glClearColor(0.4f, 0.4f, 0.4f, 1.0f);			   // Grey Background
   // enable depth testing for drawing
   glEnable(GL_DEPTH_TEST);
   // enable multisampling for smoother drawing
@@ -100,7 +142,7 @@ void NGLScene::initialize()
   std::cout<<"loading model\n";
 
   //load obj. Add path to .obj file
-  ngl::Obj mesh("models/Sphere.obj");
+  ngl::Obj mesh("models/Chasis.obj");
 
   std::cout<<"checking triangular...\n";
   //ngl only works with tri meshes
@@ -209,13 +251,12 @@ void NGLScene::initialize()
     m_tris.push_back(pwl::Triangle(v1,v2,v3));
   }
 
+  //get uv
   for(unsigned int i = 0; i < vboMesh.size(); ++i)
   {
     ngl::Vec2 vt (vboMesh[i].u, vboMesh[i].v);
     m_uv.push_back(vt);
   }
-
-
 
   //grab instance of VAO class. As Tri Strip
   m_vaoMesh = ngl::VertexArrayObject::createVOA(GL_TRIANGLES);
@@ -274,7 +315,7 @@ void NGLScene::initialize()
 
       //set up bounding box emitter
       //number of surfels is per bounding box face
-      bb.create(bbox, 1500, objCentre);
+      bb.create(bbox, 7000, objCentre);
       std::cout<<"bounding box emitter created\n";
 
       bb.goToSurface(m_tris);
@@ -322,51 +363,68 @@ void NGLScene::initialize()
 
   //create textures
   //change the filepath for location of texture save
-  pwl::Texture tex(256,256, "/home/i7660362/PWL/texture/PWLTexture.png");
+  pwl::Texture tex(256,256, "/Users/md/PWL/texture/PWLTexture.png");
   tex.generateTexture(m_bboxvec, m_uv);
 
   std::cout<<"Weathering has finished.\n";
+
+  //load shader and set values
+  ngl::ShaderLib *shader = ngl::ShaderLib::instance();
+
+  //load vert and frag shaders
+  shader->createShaderProgram("TexShader");
+  shader->attachShader("Vertex",ngl::VERTEX);
+  shader->attachShader("Fragment",ngl::FRAGMENT);
+  shader->loadShaderSource("Vertex","shaders/Vertex.glsl");
+  shader->loadShaderSource("Fragment","shaders/Fragment.glsl");
+
+  shader->compileShader("Vertex");
+  shader->compileShader("Fragment");
+  shader->attachShaderToProgram("TexShader","Vertex");
+  shader->attachShaderToProgram("TexShader","Fragment");
+
+  //link shader
+  shader->linkProgramObject("TexShader");
+  shader->use("TexShader");
+  shader->registerUniform("TexShader", "MVP");
+
+  //load texture
+  loadTexture();
 
   ngl::Mat4 iv;
   iv = m_cam->getViewMatrix();
   iv.transpose();
 
+  /**
+  //setup lights
+  //key light
+  m_key = new ngl::Light(ngl::Vec3(3,2,2), ngl::Colour(1,1,1,1), ngl::POINTLIGHT);
+  m_key->setTransform(iv);
+  m_key->enable();
+  m_key->loadToShader("light[0]");
+  //fill light
+  m_fill = new ngl::Light(ngl::Vec3(-3,1.5,2), ngl::Colour(1,1,1,1), ngl::POINTLIGHT);
+  m_fill->setTransform(iv);
+  m_fill->enable();
+  m_fill->loadToShader("light[1]");
+  //back light
+  m_back = new ngl::Light(ngl::Vec3(0,1,-2), ngl::Colour(1,1,1,1), ngl::POINTLIGHT);
+  m_back->setTransform(iv);
+  m_back->enable();
+  m_back->loadToShader("light[2]");
+  **/
+
+  //make spheres, used for gton/surfel visualisation
   ngl::VAOPrimitives *prim = ngl::VAOPrimitives::instance();
   prim->createSphere("sphere1",0.03,20);
-
-  //pointer to shader lib
-  ngl::ShaderLib *shader = ngl::ShaderLib::instance();
-  //create shader program and assign name
-  shader->createShaderProgram("Colour");
-  //create 2 empty shaders
-  shader->attachShader("ColourVertex", ngl::VERTEX);
-  shader->attachShader("ColourFragment", ngl::FRAGMENT);
-  //load source for shaders
-  shader->loadShaderSource("ColourVertex", "shaders/ColourVertex.glsl");
-  shader->loadShaderSource("ColourFragment", "shaders/ColourFragment.glsl");
-  //compile shaders
-  shader->compileShader("ColourVertex");
-  shader->compileShader("ColourFragment");
-  //attach shader to program
-  shader->attachShaderToProgram("Colour", "ColourVertex");
-  shader->attachShaderToProgram("Colour", "ColourFragment");
-  //link shader
-  shader->linkProgramObject("Colour");
-  shader->use("Colour");
-
-  //get uniform in frag shader
-  GLuint id = shader->getProgramID("Colour");
-  GLuint uni = glGetUniformLocation(id,"lightPos");
-
-  glUniform3f(uni,2.0f,1.0f,1.0f);
-
   glViewport(0,0,width(),height());
 }
 
 void NGLScene::loadMatricesToShader()
 {
+  /**
   ngl::ShaderLib *shader=ngl::ShaderLib::instance();
-  (*shader)["Colour"]->use();
+  (*shader)["TexShader"]->use();
   ngl::Mat4 MV;
   ngl::Mat4 MVP;
   ngl::Mat4 M;
@@ -377,30 +435,50 @@ void NGLScene::loadMatricesToShader()
 
   shader->setShaderParamFromMat4("MVP",MVP);
   shader->setShaderParamFromMat4("MV",MV);
+  **/
 
+  ngl::ShaderLib *shader = ngl::ShaderLib::instance();
+  ngl::Mat4 MVP = m_transform.getMatrix() * m_mouseGlobalTX * m_cam->getVPMatrix();
+  shader->setRegisteredUniform("MVP", MVP);
 }
 
-void NGLScene::loadGTonShader(ngl::Mat4 _trans)
-{
-  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
-  (*shader)["Colour"]->use();
-  ngl::Mat4 MV;
-  ngl::Mat4 MVP;
-  ngl::Mat4 M;
-
-  M=m_transform.getMatrix()*m_mouseGlobalTX;
-  MV=M*m_cam->getViewMatrix();
-  MVP=MV*m_cam->getProjectionMatrix()*_trans*m_view;
-
-  shader->setShaderParamFromMat4("MVP",MVP);
-  shader->setShaderParamFromMat4("MV",MV);
-}
-
+//derived from Jon Macey's Normal Mapping NGL demo
 void NGLScene::render()
 {
   // clear the screen and depth buffer
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  //rotation based on mouse position
+  ngl::Mat4 rotX;
+  ngl::Mat4 rotY;
+  //create rotation matrices
+  rotX.rotateX(m_spinXFace);
+  rotY.rotateY(m_spinYFace);
+  //multiply roations
+  m_mouseGlobalTX=rotY*rotX;
+  //add the translations
+  m_mouseGlobalTX.m_m[3][0] = m_modelPos.m_x;
+  m_mouseGlobalTX.m_m[3][1] = m_modelPos.m_y;
+  m_mouseGlobalTX.m_m[3][2] = m_modelPos.m_z;
+  ngl::ShaderLib *shader=ngl::ShaderLib::instance();
+  (*shader)["TexShader"]->use();
+  //bind VAO and draw
+  m_vaoMesh->bind();
+
+  //bind Texture
+  glBindTexture(GL_TEXTURE_2D, m_textureName);
+  glPolygonMode(GL_FRONT_AND_BACK, m_polyMode);
+
+  //load to shader
+  loadMatricesToShader();
+
+  //draw
+  m_vaoMesh->draw();
+
+	//we are done so we can unbind the vao
+	m_vaoMesh->unbind();
+
+  /**
   //instance of shader lib
   ngl::ShaderLib *shader = ngl::ShaderLib::instance();
   //translate
@@ -434,8 +512,93 @@ void NGLScene::render()
     trans.translate(vPos[0],vPos[1],vPos[2]);
     shader->setShaderParamFromMat4("MVP",trans*m_view*m_projection);
     ngl::VAOPrimitives::instance()->draw("sphere1");
-	}
+  }**/
 }
+
+//----------------------------------------------------------------------------------------------------------------------
+void NGLScene::mouseMoveEvent (QMouseEvent * _event)
+{
+  // note the method buttons() is the button state when event was called
+  // this is different from button() which is used to check which button was
+  // pressed when the mousePress/Release event is generated
+  if(m_rotate && _event->buttons() == Qt::LeftButton)
+  {
+    int diffx=_event->x()-m_origX;
+    int diffy=_event->y()-m_origY;
+    m_spinXFace += (float) 0.5f * diffy;
+    m_spinYFace += (float) 0.5f * diffx;
+    m_origX = _event->x();
+    m_origY = _event->y();
+    renderLater();
+
+  }
+        // right mouse translate code
+  else if(m_translate && _event->buttons() == Qt::RightButton)
+  {
+    int diffX = (int)(_event->x() - m_origXPos);
+    int diffY = (int)(_event->y() - m_origYPos);
+    m_origXPos=_event->x();
+    m_origYPos=_event->y();
+    m_modelPos.m_x += INCREMENT * diffX;
+    m_modelPos.m_y -= INCREMENT * diffY;
+    renderLater();
+
+   }
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+void NGLScene::mousePressEvent ( QMouseEvent * _event)
+{
+  // this method is called when the mouse button is pressed in this case we
+  // store the value where the maouse was clicked (x,y) and set the Rotate flag to true
+  if(_event->button() == Qt::LeftButton)
+  {
+    m_origX = _event->x();
+    m_origY = _event->y();
+    m_rotate =true;
+  }
+  // right mouse translate mode
+  else if(_event->button() == Qt::RightButton)
+  {
+    m_origXPos = _event->x();
+    m_origYPos = _event->y();
+    m_translate=true;
+  }
+
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+void NGLScene::mouseReleaseEvent ( QMouseEvent * _event )
+{
+  // this event is called when the mouse button is released
+  // we then set Rotate to false
+  if (_event->button() == Qt::LeftButton)
+  {
+    m_rotate=false;
+  }
+        // right mouse translate mode
+  if (_event->button() == Qt::RightButton)
+  {
+    m_translate=false;
+  }
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+void NGLScene::wheelEvent(QWheelEvent *_event)
+{
+
+	// check the diff of the wheel position (0 means no change)
+	if(_event->delta() > 0)
+	{
+		m_modelPos.m_z+=ZOOM;
+	}
+	else if(_event->delta() <0 )
+	{
+		m_modelPos.m_z-=ZOOM;
+	}
+	renderLater();
+}
+//----------------------------------------------------------------------------------------------------------------------s
 
 
 void NGLScene::keyPressEvent(QKeyEvent *_event)

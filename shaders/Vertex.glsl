@@ -10,8 +10,12 @@ uniform mat4 MVP;
 
 out vec3 normal;
 
+out vec2 vertUV;
+
+
 void main()
 {
     normal = inNormal;
     gl_Position = MVP*vec4(inVert, 1.0);
+    vertUV=inUV.st;
 }

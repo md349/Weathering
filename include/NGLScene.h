@@ -59,7 +59,6 @@ private:
     int m_spinXFace;
     int m_spinYFace;
 
-
     bool m_rotate;
     bool m_translate;
 
@@ -69,6 +68,10 @@ private:
     int m_origXPos;
     int m_origYPos;
 
+    //simple lights
+    ngl::Light *m_key;
+    ngl::Light *m_fill;
+    ngl::Light *m_back;
 
     ngl::Mat4 m_mouseGlobalTX;
 
@@ -88,18 +91,43 @@ private:
     /// @param [in] _event the Qt event to query for size etc
     //----------------------------------------------------------------------------------------------------------------------
     void keyPressEvent(QKeyEvent *_event);
+    //----------------------------------------------------------------------------------------------------------------------
+    /// @brief this method is called every time a mouse is moved
+    /// @param _event the Qt Event structure
+    //----------------------------------------------------------------------------------------------------------------------
+    void mouseMoveEvent (QMouseEvent * _event );
+    //----------------------------------------------------------------------------------------------------------------------
+    /// @brief this method is called everytime the mouse button is pressed
+    /// inherited from QObject and overridden here.
+    /// @param _event the Qt Event structure
+    //----------------------------------------------------------------------------------------------------------------------
+    void mousePressEvent ( QMouseEvent *_event);
+    //----------------------------------------------------------------------------------------------------------------------
+    /// @brief this method is called everytime the mouse button is released
+    /// inherited from QObject and overridden here.
+    /// @param _event the Qt Event structure
+    //----------------------------------------------------------------------------------------------------------------------
+    void mouseReleaseEvent ( QMouseEvent *_event );
+    //----------------------------------------------------------------------------------------------------------------------
+    /// @brief this method is called everytime the mouse wheel is moved
+    /// inherited from QObject and overridden here.
+    /// @param _event the Qt Event structure
+    //----------------------------------------------------------------------------------------------------------------------
+    void wheelEvent( QWheelEvent *_event);
+
+    void loadTexture();
 
     void loadMatricesToShader();
-
-    void loadGTonShader(ngl::Mat4 trans);
 
     ngl::Mat4 m_projection;
     ngl::Mat4 m_view;
 
+    //vectors storing surfel/gton info. only bbox is really used.s
     std::vector <pwl::Surfel *> m_bboxvec;
     std::vector <pwl::GTon> m_vert;
     std::vector <pwl::GTon> m_hem;
 
+    //holds obj centre
     ngl::Vec3 objCentre;
 
     //vertex array object
@@ -116,6 +144,11 @@ private:
 
     //holds normalised positions of surfels for texture
     std::vector<ngl::Vec3> m_textureVec;
+
+    //texture
+    GLuint m_textureName;
+
+    GLenum m_polyMode;
 };
 
 #endif
